@@ -456,24 +456,24 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
     if (!terminalTitleEnabled() || Flag.OPENCODE_DISABLE_TERMINAL_TITLE) return
 
     if (route.data.type === "home") {
-      renderer.setTerminalTitle("OpenCode")
+      renderer.setTerminalTitle("WYZORD CLI")
       return
     }
 
     if (route.data.type === "session") {
       const session = sync.session.get(route.data.sessionID)
       if (!session || SessionApi.isDefaultTitle(session.title)) {
-        renderer.setTerminalTitle("OpenCode")
+        renderer.setTerminalTitle("WYZORD CLI")
         return
       }
 
       const title = session.title.length > 40 ? session.title.slice(0, 37) + "..." : session.title
-      renderer.setTerminalTitle(`OC | ${title}`)
+      renderer.setTerminalTitle(`WYZORD | ${title}`)
       return
     }
 
     if (route.data.type === "plugin") {
-      renderer.setTerminalTitle(`OC | ${route.data.id}`)
+      renderer.setTerminalTitle(`WYZORD | ${route.data.id}`)
     }
   })
 
@@ -802,7 +802,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
         name: "docs.open",
         title: "Open docs",
         run: () => {
-          open("https://opencode.ai/docs").catch(() => {})
+          open("https://github.com/Cha11enger/opencode").catch(() => {})
           dialog.clear()
         },
         category: "System",
@@ -1001,6 +1001,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
   })
 
   event.on("installation.update-available", async (evt) => {
+    return
     console.log("installation.update-available", evt)
     const version = evt.properties.version
 
@@ -1029,7 +1030,7 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
 
     const result = await sdk.client.global.upgrade({ target: version })
 
-    if (result.error || !result.data?.success) {
+    if (result.error || result.data?.success !== true) {
       toast.show({
         variant: "error",
         title: "Update Failed",
@@ -1038,11 +1039,12 @@ function App(props: { onSnapshot?: () => Promise<string[]> }) {
       })
       return
     }
+    const upgradedVersion = (result.data as { success: true; version: string }).version
 
     await DialogAlert.show(
       dialog,
       "Update Complete",
-      `Successfully updated to OpenCode v${result.data.version}. Please restart the application.`,
+      `Successfully updated to WYZORD CLI v${upgradedVersion}. Please restart the application.`,
     )
 
     void exit()

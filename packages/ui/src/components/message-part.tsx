@@ -10,6 +10,8 @@ import {
   Switch,
   onCleanup,
   Index,
+  children,
+  type ComponentProps,
   type JSX,
 } from "solid-js"
 import { createStore } from "solid-js/store"
@@ -47,8 +49,8 @@ import { Markdown } from "./markdown"
 import { ImagePreview } from "./image-preview"
 import { getDirectory as _getDirectory, getFilename } from "@opencode-ai/core/util/path"
 import { checksum } from "@opencode-ai/core/util/encode"
-import { Tooltip } from "./tooltip"
-import { IconButton } from "./icon-button"
+import { Tooltip as OpenCodeTooltip } from "./tooltip"
+import { IconButton as OpenCodeIconButton } from "./icon-button"
 import { Spinner } from "./spinner"
 import { TextShimmer } from "./text-shimmer"
 import { AnimatedCountList } from "./tool-count-summary"
@@ -58,6 +60,51 @@ import { animate } from "motion"
 import { useLocation } from "@solidjs/router"
 import { attached, inline, kind } from "./message-file"
 import { readPartText } from "./message-part-text"
+
+function isWyzordEmbeddedOpenCode() {
+  return (
+    typeof window !== "undefined" &&
+    Boolean((window as Window & { __WYZORD_OPENCODE_EMBEDDED__?: boolean }).__WYZORD_OPENCODE_EMBEDDED__)
+  )
+}
+
+function Tooltip(props: ComponentProps<typeof OpenCodeTooltip>) {
+  if (isWyzordEmbeddedOpenCode()) {
+    return <>{props.children}</>
+  }
+  return <OpenCodeTooltip {...props} />
+}
+
+function IconButton(props: ComponentProps<typeof OpenCodeIconButton>) {
+  if (!isWyzordEmbeddedOpenCode()) return <OpenCodeIconButton {...props} />
+
+  const {
+    icon,
+    iconSize,
+    size,
+    variant,
+    class: className,
+    classList,
+    children: _children,
+    type,
+    ...rest
+  } = props as ComponentProps<typeof OpenCodeIconButton> & { type?: "button" | "submit" | "reset" }
+
+  return (
+    <button
+      {...rest}
+      type={type ?? "button"}
+      data-component="icon-button"
+      data-icon={icon}
+      data-size={size || "normal"}
+      data-variant={variant || "secondary"}
+      class={className}
+      classList={classList}
+    >
+      <Icon name={icon} size={iconSize ?? (size === "large" ? "normal" : "small")} />
+    </button>
+  )
+}
 
 async function writeClipboard(text: string): Promise<boolean> {
   const body = typeof document === "undefined" ? undefined : document.body
@@ -805,6 +852,23 @@ function contextToolSummary(parts: ToolPart[]) {
   return { read, search, list }
 }
 
+function contextToolOutput(part: ToolPart) {
+  if (part.state.status === "pending" || part.state.status === "running") return ""
+  const output = "output" in part.state ? part.state.output : undefined
+  if (typeof output === "string") return output
+  if (output !== undefined && output !== null) {
+    try {
+      return JSON.stringify(output, null, 2)
+    } catch {
+      return String(output)
+    }
+  }
+  const metadata = "metadata" in part.state ? part.state.metadata : undefined
+  const metadataOutput = metadata?.output
+  if (typeof metadataOutput === "string") return metadataOutput
+  return ""
+}
+
 function ExaOutput(props: { output?: string }) {
   const links = createMemo(() => urls(props.output))
 
@@ -1008,6 +1072,7 @@ export function ContextToolGroup(props: { parts: ToolPart[]; busy?: boolean; onS
               const running = createMemo(
                 () => partAccessor().state.status === "pending" || partAccessor().state.status === "running",
               )
+              const output = createMemo(() => contextToolOutput(partAccessor()))
               return (
                 <div data-slot="context-tool-group-item">
                   <div data-component="tool-trigger">
@@ -1031,6 +1096,15 @@ export function ContextToolGroup(props: { parts: ToolPart[]; busy?: boolean; onS
                       </div>
                     </div>
                   </div>
+                  <Show when={!running() && output().trim()}>
+                    <div
+                      data-component="tool-output"
+                      data-context-tool-output
+                      data-scrollable={output().length > 480 ? "" : undefined}
+                    >
+                      <Markdown text={output()} />
+                    </div>
+                  </Show>
                 </div>
               )
             }}

@@ -374,6 +374,28 @@ export function SessionTurn(
     if (showReasoningSummaries()) return assistantVisible() === 0
     return true
   })
+  const lastVisibleAssistantPart = createMemo(() => {
+    const show = showReasoningSummaries()
+    const messages = assistantMessages()
+    for (let i = messages.length - 1; i >= 0; i--) {
+      const message = messages[i]
+      if (!message) continue
+      const parts = list(data.store.part?.[message.id], emptyParts)
+      for (let j = parts.length - 1; j >= 0; j--) {
+        const part = parts[j]
+        if (part && partState(part, show) === "visible") return part
+      }
+    }
+    return undefined
+  })
+  const showContinuation = createMemo(() => {
+    if (!working() || !!error() || showThinking()) return false
+    const part = lastVisibleAssistantPart()
+    return (
+      part?.type === "tool" &&
+      (part.state.status === "completed" || part.state.status === "error")
+    )
+  })
 
   const autoScroll = createAutoScroll({
     working,
@@ -429,6 +451,11 @@ export function SessionTurn(
                       duration={700}
                     />
                   </Show>
+                </div>
+              </Show>
+              <Show when={showContinuation()}>
+                <div data-slot="session-turn-thinking" data-component="assistant-continuation-loader" role="status" aria-live="polite">
+                  <TextShimmer text={i18n.t("ui.sessionTurn.status.thinking")} />
                 </div>
               </Show>
               <SessionRetry status={status()} show={active()} />

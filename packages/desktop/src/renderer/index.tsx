@@ -1,5 +1,6 @@
 // @refresh reload
 
+import "@opencode-ai/app/index.css"
 import {
   ACCEPTED_FILE_EXTENSIONS,
   ACCEPTED_FILE_TYPES,
@@ -53,6 +54,24 @@ if (import.meta.env.VITE_SENTRY_DSN) {
   })
 }
 
+const shouldEnableReactGrab =
+  import.meta.env.DEV &&
+  import.meta.env.VITE_DISABLE_REACT_GRAB !== "true"
+
+async function initializeReactGrab() {
+  if (!shouldEnableReactGrab) return
+
+  try {
+    const reactGrab = await import("react-grab")
+    reactGrab.getGlobalApi()?.setOptions({
+      allowActivationInsideInput: false,
+    })
+  } catch (error) {
+    console.error("Failed to initialize react-grab", error)
+  }
+}
+
+void initializeReactGrab()
 void initI18n()
 
 const deepLinkEvent = "opencode:deep-link"
@@ -231,7 +250,7 @@ const createPlatform = (): Platform => {
 
       const notification = new Notification(title, {
         body: description ?? "",
-        icon: "https://opencode.ai/favicon-96x96-v3.png",
+        icon: "https://wyzord.ai/favicon-96x96-v3.png",
       })
       notification.onclick = () => {
         void window.api.showWindow()

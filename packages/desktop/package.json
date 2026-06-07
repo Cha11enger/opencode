@@ -1,13 +1,13 @@
 {
-  "name": "@opencode-ai/desktop",
+  "name": "@wyzord/desktop",
   "private": true,
   "version": "1.15.12",
   "type": "module",
   "license": "MIT",
-  "homepage": "https://opencode.ai",
+  "homepage": "https://wyzord.ai",
   "author": {
-    "name": "OpenCode",
-    "email": "hello@opencode.ai"
+    "name": "WYZORD",
+    "email": "hello@wyzord.ai"
   },
   "scripts": {
     "typecheck": "tsgo -b",
@@ -32,7 +32,8 @@
     "electron-updater": "^6",
     "electron-window-state": "^5.0.3",
     "drizzle-orm": "catalog:",
-    "marked": "^15"
+    "marked": "^15",
+    "react-grab": "0.1.32"
   },
   "devDependencies": {
     "@actions/artifact": "4.0.0",

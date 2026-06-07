@@ -1,9 +1,10 @@
 #!/usr/bin/env node
 
-const childProcess = require("child_process")
-const fs = require("fs")
-const path = require("path")
-const os = require("os")
+import childProcess from "child_process"
+import fs from "fs"
+import path from "path"
+import os from "os"
+import { fileURLToPath } from "url"
 
 const forwardedSignals = ["SIGINT", "SIGTERM", "SIGHUP"]
 
@@ -43,13 +44,13 @@ function run(target) {
   })
 }
 
-const envPath = process.env.OPENCODE_BIN_PATH
+const envPath = process.env.WYZORD_BIN_PATH
 
+const __filename = fileURLToPath(import.meta.url)
 const scriptPath = fs.realpathSync(__filename)
 const scriptDir = path.dirname(scriptPath)
 
-//
-const cached = path.join(scriptDir, ".opencode")
+const cached = path.join(scriptDir, ".wyzord")
 
 const platformMap = {
   darwin: "darwin",
@@ -70,8 +71,8 @@ let arch = archMap[os.arch()]
 if (!arch) {
   arch = os.arch()
 }
-const base = "opencode-" + platform + "-" + arch
-const binary = platform === "windows" ? "opencode.exe" : "opencode"
+const base = "wyzord-" + platform + "-" + arch
+const binary = platform === "windows" ? "wyzord.exe" : "wyzord"
 
 function supportsAvx2() {
   if (arch !== "x64") return false
@@ -169,6 +170,11 @@ const names = (() => {
 })()
 
 function findBinary(startDir) {
+  for (const name of names) {
+    const localDist = path.join(scriptDir, "..", "dist", name, "bin", binary)
+    if (fs.existsSync(localDist)) return localDist
+  }
+
   let current = startDir
   for (;;) {
     const modules = path.join(current, "node_modules")
@@ -189,7 +195,7 @@ function findBinary(startDir) {
 const resolved = envPath || (fs.existsSync(cached) ? cached : findBinary(scriptDir))
 if (!resolved) {
   console.error(
-    "It seems that your package manager failed to install the right version of WYZORD CLI for your platform. You can try manually installing " +
+    "It seems that your package manager failed to install the right version of the WYZORD CLI for your platform. You can try manually installing " +
       names.map((n) => `\"${n}\"`).join(" or ") +
       " package",
   )

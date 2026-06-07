@@ -1,6 +1,6 @@
-# OpenCode Desktop
+# WYZORD Desktop
 
-The OpenCode Desktop app, built with Electron.
+The WYZORD Desktop app, built with Electron.
 
 ## Development
 

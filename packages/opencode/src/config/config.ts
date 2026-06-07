@@ -69,8 +69,79 @@ function normalizeLoadedConfig(data: unknown, source: string) {
   delete copy.theme
   delete copy.keybinds
   delete copy.tui
-  log.warn("tui keys in opencode config are deprecated; move them to tui.json", { path: source })
+  log.warn("tui keys in WYZORD config are deprecated; move them to tui.json", { path: source })
   return copy
+}
+
+function parseTomlString(input: string, key: string) {
+  const pattern = new RegExp(`^\\s*${key}\\s*=\\s*"([^"]*)"`, "m")
+  return pattern.exec(input)?.[1]
+}
+
+async function loadCodexTheClawBayConfig(): Promise<Info> {
+  if (process.env.WYZORD_TEST_HOME || process.env.OPENCODE_TEST_HOME) return {}
+
+  const codexConfig = path.join(os.homedir(), ".codex", "config.toml")
+  if (!existsSync(codexConfig)) return {}
+
+  const text = await fsNode.readFile(codexConfig, "utf8").catch(() => "")
+  if (!text.includes("[model_providers.theclawbay]")) return {}
+
+  const baseURL = parseTomlString(text, "base_url") ?? parseTomlString(text, "openai_base_url")
+  const apiKey = parseTomlString(text, "experimental_bearer_token")
+  const model = parseTomlString(text, "model") ?? "gpt-5.5"
+  if (!baseURL) return {}
+
+  const modelIDs = await fsNode
+    .readFile(path.join(os.homedir(), ".codex", "theclawbay.models-cache.json"), "utf8")
+    .then((raw) => {
+      const parsed = JSON.parse(raw)
+      if (!isRecord(parsed) || !Array.isArray(parsed.models)) return []
+      return parsed.models.flatMap((item) =>
+        isRecord(item) && typeof item.modelId === "string" ? [item.modelId] : [],
+      )
+    })
+    .catch(() => [model])
+
+  const uniqueModelIDs = Array.from(new Set([model, ...modelIDs]))
+
+  return {
+    model: `theclawbay/${model}`,
+    small_model: uniqueModelIDs.includes("gpt-5.4-mini") ? "theclawbay/gpt-5.4-mini" : `theclawbay/${model}`,
+    provider: {
+      theclawbay: {
+        name: "The Claw Bay",
+        npm: "@ai-sdk/openai",
+        options: {
+          baseURL,
+          ...(apiKey ? { apiKey } : {}),
+        },
+        models: Object.fromEntries(
+          uniqueModelIDs.map((id) => [
+            id,
+            {
+              name: id,
+              reasoning: id.startsWith("gpt-") || id.includes("codex"),
+              temperature: true,
+              tool_call: true,
+              limit: {
+                context: 200000,
+                output: 32768,
+              },
+              provider: {
+                npm: "@ai-sdk/openai",
+                api: baseURL,
+              },
+              modalities: {
+                input: ["text"],
+                output: ["text"],
+              },
+            },
+          ]),
+        ),
+      },
+    },
+  }
 }
 
 async function substituteWellKnownRemoteConfig(input: {
@@ -141,10 +212,10 @@ export const Info = Schema.Struct({
   }),
   logLevel: Schema.optional(LogLevelRef).annotate({ description: "Log level" }),
   server: Schema.optional(ConfigServer.Server).annotate({
-    description: "Server configuration for opencode serve and web commands",
+    description: "Server configuration for wyzord serve and web commands",
   }),
   command: Schema.optional(Schema.Record(Schema.String, ConfigCommand.Info)).annotate({
-    description: "Command configuration, see https://opencode.ai/docs/commands",
+    description: "Command configuration, see https://wyzord.ai/docs/commands",
   }),
   skills: Schema.optional(ConfigSkills.Info).annotate({ description: "Additional skill folder paths" }),
   reference: Schema.optional(ConfigReference.Info).annotate({
@@ -217,7 +288,7 @@ export const Info = Schema.Struct({
       }),
       [Schema.Record(Schema.String, ConfigAgent.Info)],
     ),
-  ).annotate({ description: "Agent configuration, see https://opencode.ai/docs/agents" }),
+  ).annotate({ description: "Agent configuration, see https://wyzord.ai/docs/agents" }),
   provider: Schema.optional(Schema.Record(Schema.String, ConfigProvider.Info)).annotate({
     description: "Custom provider configurations and model overrides",
   }),
@@ -341,7 +412,7 @@ export class Service extends Context.Service<Service, Interface>()("@opencode/Co
 export const use = serviceUse(Service)
 
 function globalConfigFile() {
-  const candidates = ["opencode.jsonc", "opencode.json", "config.json"].map((file) =>
+  const candidates = ["wyzord.jsonc", "wyzord.json", "opencode.jsonc", "opencode.json", "config.json"].map((file) =>
     path.join(Global.Path.config, file),
   )
   for (const file of candidates) {
@@ -430,8 +501,8 @@ export const layer = Layer.effect(
 
       yield* Effect.promise(() => resolveLoadedPlugins(data, options.path))
       if (!data.$schema) {
-        data.$schema = "https://opencode.ai/config.json"
-        const updated = text.replace(/^\s*\{/, '{\n  "$schema": "https://opencode.ai/config.json",')
+        data.$schema = "https://wyzord.ai/config.json"
+        const updated = text.replace(/^\s*\{/, '{\n  "$schema": "https://wyzord.ai/config.json",')
         yield* fs.writeFileString(options.path, updated).pipe(Effect.catch(() => Effect.void))
       }
       return data
@@ -446,17 +517,20 @@ export const layer = Layer.effect(
 
     const loadGlobal = Effect.fnUntraced(function* (env?: Record<string, string>) {
       let result: Info = {}
+      result = mergeConfig(result, yield* Effect.promise(() => loadCodexTheClawBayConfig()))
       // Seed the default global config with the schema for editor completion, but avoid writing when the user
       // explicitly routes config through env-provided paths or content.
-      if (!Flag.OPENCODE_CONFIG && !Flag.OPENCODE_CONFIG_DIR && !Flag.OPENCODE_CONFIG_CONTENT) {
+      if (!Flag.OPENCODE_CONFIG && !Flag.WYZORD_CONFIG_DIR && !Flag.OPENCODE_CONFIG_DIR && !Flag.OPENCODE_CONFIG_CONTENT) {
         const file = globalConfigFile()
         if (!existsSync(file)) {
           yield* fs
-            .writeWithDirs(file, JSON.stringify({ $schema: "https://opencode.ai/config.json" }, null, 2))
+            .writeWithDirs(file, JSON.stringify({ $schema: "https://wyzord.ai/config.json" }, null, 2))
             .pipe(Effect.catch(() => Effect.void))
         }
       }
       result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "config.json"), env))
+      result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "wyzord.json"), env))
+      result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "wyzord.jsonc"), env))
       result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "opencode.json"), env))
       result = mergeConfig(result, yield* loadFile(path.join(Global.Path.config, "opencode.jsonc"), env))
 
@@ -467,7 +541,7 @@ export const layer = Layer.effect(
             .then(async (mod) => {
               const { provider, model, ...rest } = mod.default
               if (provider && model) result.model = `${provider}/${model}`
-              result["$schema"] = "https://opencode.ai/config.json"
+              result["$schema"] = "https://wyzord.ai/config.json"
               result = mergeConfig(result, rest)
               await fsNode.writeFile(path.join(Global.Path.config, "config.json"), JSON.stringify(result, null, 2))
               await fsNode.unlink(legacy)
@@ -580,7 +654,7 @@ export const layer = Layer.effect(
                 })
               : {}
             const remoteConfig = mergeConfig(isRecord(wellknown.config) ? wellknown.config : {}, fetchedConfig)
-            if (!remoteConfig.$schema) remoteConfig.$schema = "https://opencode.ai/config.json"
+            if (!remoteConfig.$schema) remoteConfig.$schema = "https://wyzord.ai/config.json"
             const source = wellknownURL
             const next = yield* loadConfig(
               JSON.stringify(remoteConfig),
@@ -604,6 +678,9 @@ export const layer = Layer.effect(
         }
 
         if (!Flag.OPENCODE_DISABLE_PROJECT_CONFIG) {
+          for (const file of yield* ConfigPaths.files("wyzord", ctx.directory, ctx.worktree).pipe(Effect.orDie)) {
+            yield* merge(file, yield* loadFile(file, authEnv), "local")
+          }
           for (const file of yield* ConfigPaths.files("opencode", ctx.directory, ctx.worktree).pipe(Effect.orDie)) {
             yield* merge(file, yield* loadFile(file, authEnv), "local")
           }
@@ -615,6 +692,10 @@ export const layer = Layer.effect(
 
         const directories = yield* ConfigPaths.directories(ctx.directory, ctx.worktree)
 
+        if (Flag.WYZORD_CONFIG_DIR) {
+          log.debug("loading config from WYZORD_CONFIG_DIR", { path: Flag.WYZORD_CONFIG_DIR })
+        }
+
         if (Flag.OPENCODE_CONFIG_DIR) {
           log.debug("loading config from OPENCODE_CONFIG_DIR", { path: Flag.OPENCODE_CONFIG_DIR })
         }
@@ -622,8 +703,8 @@ export const layer = Layer.effect(
         const deps: Fiber.Fiber<void>[] = []
 
         for (const dir of directories) {
-          if (dir.endsWith(".opencode") || dir === Flag.OPENCODE_CONFIG_DIR) {
-            for (const file of ["opencode.json", "opencode.jsonc"]) {
+          if (dir.endsWith(".wyzord") || dir.endsWith(".opencode") || dir === Flag.WYZORD_CONFIG_DIR || dir === Flag.OPENCODE_CONFIG_DIR) {
+            for (const file of ["wyzord.json", "wyzord.jsonc", "opencode.json", "opencode.jsonc"]) {
               const source = path.join(dir, file)
               log.debug(`loading config from ${source}`)
               yield* merge(source, yield* loadFile(source, authEnv))

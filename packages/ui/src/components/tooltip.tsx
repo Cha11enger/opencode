@@ -1,5 +1,5 @@
 import { Tooltip as KobalteTooltip } from "@kobalte/core/tooltip"
-import { createEffect, Match, onCleanup, splitProps, Switch, type JSX } from "solid-js"
+import { children, createEffect, Match, onCleanup, splitProps, Switch, type JSX } from "solid-js"
 import type { ComponentProps } from "solid-js"
 import { createStore } from "solid-js/store"
 
@@ -15,6 +15,13 @@ export interface TooltipProps extends ComponentProps<typeof KobalteTooltip> {
 export interface TooltipKeybindProps extends Omit<TooltipProps, "value"> {
   title: string
   keybind: string
+}
+
+function isWyzordEmbeddedOpenCode() {
+  return (
+    typeof window !== "undefined" &&
+    Boolean((window as Window & { __WYZORD_OPENCODE_EMBEDDED__?: boolean }).__WYZORD_OPENCODE_EMBEDDED__)
+  )
 }
 
 export function TooltipKeybind(props: TooltipKeybindProps) {
@@ -49,6 +56,7 @@ export function Tooltip(props: TooltipProps) {
     "ignoreSafeArea",
     "value",
   ])
+  const resolvedChildren = children(() => props.children)
 
   const close = () => setState("open", false)
 
@@ -100,10 +108,42 @@ export function Tooltip(props: TooltipProps) {
   })
 
   let justClickedTrigger = false
+  let embeddedCaptureCleanup: (() => void) | undefined
+
+  const setEmbeddedRef = (element: HTMLDivElement) => {
+    embeddedCaptureCleanup?.()
+    ref = element
+
+    const handleKeyDown = (event: KeyboardEvent) => {
+      if (event.key !== "Enter" && event.key !== " ") return
+      arm()
+    }
+
+    element.addEventListener("pointerdown", arm, { capture: true })
+    element.addEventListener("keydown", handleKeyDown, { capture: true })
+    embeddedCaptureCleanup = () => {
+      element.removeEventListener("pointerdown", arm, { capture: true })
+      element.removeEventListener("keydown", handleKeyDown, { capture: true })
+    }
+  }
+
+  onCleanup(() => embeddedCaptureCleanup?.())
 
   return (
     <Switch>
-      <Match when={local.inactive}>{local.children}</Match>
+      <Match when={local.inactive}>{resolvedChildren()}</Match>
+      <Match when={isWyzordEmbeddedOpenCode()}>
+        <div
+          ref={setEmbeddedRef}
+          data-component="tooltip-trigger"
+          class={local.class}
+          title={typeof local.value === "string" ? local.value : undefined}
+          onPointerLeave={leave}
+          onFocusOut={() => requestAnimationFrame(() => drop())}
+        >
+          {resolvedChildren()}
+        </div>
+      </Match>
       <Match when={true}>
         <KobalteTooltip
           gutter={4}
@@ -134,7 +174,7 @@ export function Tooltip(props: TooltipProps) {
             onPointerLeave={leave}
             onFocusOut={() => requestAnimationFrame(() => drop())}
           >
-            {local.children}
+            {resolvedChildren()}
           </KobalteTooltip.Trigger>
           <KobalteTooltip.Portal>
             <KobalteTooltip.Content

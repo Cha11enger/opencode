@@ -1,10 +1,10 @@
 {
   "$schema": "https://json.schemastore.org/package.json",
   "version": "1.15.12",
-  "name": "opencode",
+  "name": "wyzord",
   "type": "module",
   "license": "MIT",
-  "private": true,
+  "private": false,
   "scripts": {
     "typecheck": "tsgo --noEmit",
     "test": "bun test --timeout 30000",
@@ -19,7 +19,8 @@
     "db": "bun drizzle-kit"
   },
   "bin": {
-    "opencode": "./bin/opencode"
+    "wyzord": "./bin/wyzord",
+    "wyzord-code": "./bin/wyzord"
   },
   "exports": {
     "./*": "./src/*.ts"

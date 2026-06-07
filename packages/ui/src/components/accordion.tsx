@@ -8,8 +8,29 @@ export interface AccordionHeaderProps extends ComponentProps<typeof Kobalte.Head
 export interface AccordionTriggerProps extends ComponentProps<typeof Kobalte.Trigger> {}
 export interface AccordionContentProps extends ComponentProps<typeof Kobalte.Content> {}
 
+function isWyzordEmbeddedOpenCode() {
+  return (
+    typeof window !== "undefined" &&
+    Boolean((window as Window & { __WYZORD_OPENCODE_EMBEDDED__?: boolean }).__WYZORD_OPENCODE_EMBEDDED__)
+  )
+}
+
 function AccordionRoot(props: AccordionProps) {
-  const [split, rest] = splitProps(props, ["class", "classList"])
+  const [split, rest] = splitProps(props, ["class", "classList", "children"])
+  if (isWyzordEmbeddedOpenCode()) {
+    return (
+      <div
+        data-component="accordion"
+        data-embedded-open=""
+        classList={{
+          ...split.classList,
+          [split.class ?? ""]: !!split.class,
+        }}
+      >
+        {split.children}
+      </div>
+    )
+  }
   return (
     <Kobalte
       {...rest}
@@ -23,7 +44,21 @@ function AccordionRoot(props: AccordionProps) {
 }
 
 function AccordionItem(props: AccordionItemProps) {
-  const [split, rest] = splitProps(props, ["class", "classList"])
+  const [split, rest] = splitProps(props, ["class", "classList", "children"])
+  if (isWyzordEmbeddedOpenCode()) {
+    return (
+      <div
+        {...(rest as ComponentProps<"div">)}
+        data-slot="accordion-item"
+        classList={{
+          ...split.classList,
+          [split.class ?? ""]: !!split.class,
+        }}
+      >
+        {split.children}
+      </div>
+    )
+  }
   return (
     <Kobalte.Item
       {...rest}
@@ -38,6 +73,20 @@ function AccordionItem(props: AccordionItemProps) {
 
 function AccordionHeader(props: ParentProps<AccordionHeaderProps>) {
   const [split, rest] = splitProps(props, ["class", "classList", "children"])
+  if (isWyzordEmbeddedOpenCode()) {
+    return (
+      <div
+        {...(rest as ComponentProps<"div">)}
+        data-slot="accordion-header"
+        classList={{
+          ...split.classList,
+          [split.class ?? ""]: !!split.class,
+        }}
+      >
+        {split.children}
+      </div>
+    )
+  }
   return (
     <Kobalte.Header
       {...rest}
@@ -54,6 +103,20 @@ function AccordionHeader(props: ParentProps<AccordionHeaderProps>) {
 
 function AccordionTrigger(props: ParentProps<AccordionTriggerProps>) {
   const [split, rest] = splitProps(props, ["class", "classList", "children"])
+  if (isWyzordEmbeddedOpenCode()) {
+    return (
+      <div
+        {...(rest as ComponentProps<"div">)}
+        data-slot="accordion-trigger"
+        classList={{
+          ...split.classList,
+          [split.class ?? ""]: !!split.class,
+        }}
+      >
+        {split.children}
+      </div>
+    )
+  }
   return (
     <Kobalte.Trigger
       {...rest}
@@ -70,6 +133,20 @@ function AccordionTrigger(props: ParentProps<AccordionTriggerProps>) {
 
 function AccordionContent(props: ParentProps<AccordionContentProps>) {
   const [split, rest] = splitProps(props, ["class", "classList", "children"])
+  if (isWyzordEmbeddedOpenCode()) {
+    return (
+      <div
+        {...(rest as ComponentProps<"div">)}
+        data-slot="accordion-content"
+        classList={{
+          ...split.classList,
+          [split.class ?? ""]: !!split.class,
+        }}
+      >
+        {split.children}
+      </div>
+    )
+  }
   return (
     <Kobalte.Content
       {...rest}

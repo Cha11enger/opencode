@@ -206,6 +206,16 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         },
         options: { headerTimeout: OPENAI_HEADER_TIMEOUT_DEFAULT },
       }),
+    theclawbay: (provider) =>
+      Effect.succeed({
+        autoload: provider.source === "config",
+        async getModel(sdk: any, modelID: string, _options?: Record<string, any>) {
+          if (sdk.responses) return sdk.responses(modelID)
+          if (sdk.languageModel) return sdk.languageModel(modelID)
+          return sdk.chat(modelID)
+        },
+        options: { headerTimeout: OPENAI_HEADER_TIMEOUT_DEFAULT },
+      }),
     xai: () =>
       Effect.succeed({
         autoload: false,
@@ -429,8 +439,8 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://opencode.ai/",
-            "X-Title": "opencode",
+            "HTTP-Referer": "https://wyzord.ai/",
+            "X-Title": "wyzord",
             "X-Source": "opencode",
           },
         },
@@ -440,8 +450,8 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://opencode.ai/",
-            "X-Title": "opencode",
+            "HTTP-Referer": "https://wyzord.ai/",
+            "X-Title": "wyzord",
           },
         },
       }),
@@ -450,9 +460,9 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: provider.source === "config",
         options: {
           headers: {
-            "HTTP-Referer": "https://opencode.ai/",
-            "X-Title": "opencode",
-            "X-BILLING-INVOKE-ORIGIN": "OpenCode",
+            "HTTP-Referer": "https://wyzord.ai/",
+            "X-Title": "wyzord",
+            "X-BILLING-INVOKE-ORIGIN": "WYZORD",
           },
         },
       }),
@@ -461,7 +471,7 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "http-referer": "https://opencode.ai/",
+            "http-referer": "https://wyzord.ai/",
             "x-title": "opencode",
           },
         },
@@ -567,8 +577,8 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://opencode.ai/",
-            "X-Title": "opencode",
+            "HTTP-Referer": "https://wyzord.ai/",
+            "X-Title": "wyzord",
           },
         },
       }),
@@ -853,8 +863,8 @@ function custom(dep: CustomDep): Record<string, CustomLoader> {
         autoload: false,
         options: {
           headers: {
-            "HTTP-Referer": "https://opencode.ai/",
-            "X-Title": "opencode",
+            "HTTP-Referer": "https://wyzord.ai/",
+            "X-Title": "wyzord",
           },
         },
       }),

@@ -48,6 +48,7 @@ import Layout from "@/pages/layout"
 import { ErrorPage } from "./pages/error"
 import { useCheckServerHealth } from "./utils/server-health"
 import { ServersProvider } from "./context/servers"
+import { ComponentGrabOverlay } from "./components/component-grab-overlay"
 
 const HomeRoute = lazy(() => import("@/pages/home"))
 const Session = lazy(() => import("@/pages/session"))
@@ -173,7 +174,10 @@ export function AppBaseProviders(props: ParentProps<{ locale?: Locale }>) {
               <QueryProvider>
                 <DialogProvider>
                   <MarkedProvider>
-                    <FileComponentProvider component={File}>{props.children}</FileComponentProvider>
+                    <FileComponentProvider component={File}>
+                      {props.children}
+                      <ComponentGrabOverlay />
+                    </FileComponentProvider>
                   </MarkedProvider>
                 </DialogProvider>
               </QueryProvider>

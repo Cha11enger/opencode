@@ -60,3 +60,15 @@ describe("electron vite publicDir", () => {
     expect(existsSync(join(resolved, "oc-theme-preload.js"))).toBe(true)
   })
 })
+
+describe("desktop react-grab integration", () => {
+  test("renderer enables react-grab in local dev with an opt-out flag", async () => {
+    const source = await Bun.file(join(dir, "index.tsx")).text()
+    const pkg = await Bun.file(join(root, "package.json")).json()
+
+    expect(pkg.dependencies["react-grab"]).toBe("0.1.32")
+    expect(source).toContain('await import("react-grab")')
+    expect(source).toContain("VITE_DISABLE_REACT_GRAB")
+    expect(source).toContain("allowActivationInsideInput")
+  })
+})
