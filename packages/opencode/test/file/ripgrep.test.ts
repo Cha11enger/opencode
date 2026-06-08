@@ -33,6 +33,28 @@ const collectFiles = (input: Ripgrep.FilesInput) =>
     ),
   )
 
+const restrictDir = (dir: string) =>
+  Effect.promise(async () => {
+    if (process.platform === "win32") {
+      const username = process.env["USERNAME"]
+      if (!username) return
+      await Bun.spawn(["icacls", dir, "/inheritance:r", "/remove:g", username]).exited
+      return
+    }
+    await fs.chmod(dir, 0o000)
+  })
+
+const restoreDir = (dir: string) =>
+  Effect.promise(async () => {
+    if (process.platform === "win32") {
+      const username = process.env["USERNAME"]
+      if (!username) return
+      await Bun.spawn(["icacls", dir, "/grant", `${username}:(OI)(CI)F`]).exited
+      return
+    }
+    await fs.chmod(dir, 0o755)
+  })
+
 const withRipgrepConfig = <A, E, R>(value: string, effect: Effect.Effect<A, E, R>) =>
   Effect.acquireUseRelease(
     Effect.sync(() => {
@@ -182,6 +204,25 @@ describe("file.ripgrep", () => {
 
       const files = yield* collectFiles({ cwd: dir, glob: ["*.ts"] })
       expect(files).toEqual(["keep.ts"])
+    }),
+  )
+
+  it.live("files returns partial results when ripgrep hits an unreadable directory", () =>
+    Effect.gen(function* () {
+      const dir = yield* tmpdir((dir) =>
+        Effect.gen(function* () {
+          yield* write(path.join(dir, "ok.txt"), "ok")
+          yield* mkdir(path.join(dir, "blocked"))
+          yield* write(path.join(dir, "blocked", "hidden.txt"), "hidden")
+        }),
+      )
+      const blocked = path.join(dir, "blocked")
+
+      yield* restrictDir(blocked)
+      const files = yield* collectFiles({ cwd: dir }).pipe(Effect.ensuring(restoreDir(blocked)))
+
+      expect(files).toContain("ok.txt")
+      expect(files).not.toContain(path.join("blocked", "hidden.txt"))
     }),
   )
 

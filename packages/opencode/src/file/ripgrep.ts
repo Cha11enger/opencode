@@ -197,7 +197,7 @@ function fail(queue: Queue.Queue<string, PlatformError | Error | Cause.Done>, er
 }
 
 function filesArgs(input: FilesInput) {
-  const args = ["--no-config", "--files", "--glob=!.git/*"]
+  const args = ["--no-config", "--files", "--glob=!.git/*", "--no-messages"]
   if (input.follow) args.push("--follow")
   if (input.hidden !== false) args.push("--hidden")
   if (input.hidden === false) args.push("--glob=!.*")
@@ -362,7 +362,7 @@ export const layer: Layer.Layer<Service, never, AppFileSystem.Service | ChildPro
                 )
                 const code = yield* raceAbort(handle.exitCode, input.signal)
                 yield* Fiber.join(stdout)
-                if (code === 0 || code === 1) {
+                if (code === 0 || code === 1 || code === 2) {
                   Queue.endUnsafe(queue)
                   return
                 }
