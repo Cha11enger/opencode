@@ -178,6 +178,16 @@ export function BasicTool(props: BasicToolProps) {
     setOpen(value)
   }
 
+  const handleWyzordToggleDetails = (event: Event) => {
+    const detail = event instanceof CustomEvent ? event.detail : undefined
+    if (!detail || typeof detail.open !== "boolean") return
+    if (!hasChildren() || props.hideDetails || props.locked || pending()) return
+    setOpen(detail.open)
+  }
+
+  onMount(() => window.addEventListener("wyzord-opencode-toggle-details", handleWyzordToggleDetails))
+  onCleanup(() => window.removeEventListener("wyzord-opencode-toggle-details", handleWyzordToggleDetails))
+
   const trigger = () => (
     <div
       data-component="tool-trigger"

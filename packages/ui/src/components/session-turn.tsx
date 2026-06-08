@@ -10,7 +10,7 @@ import { useFileComponent } from "../context/file"
 
 import { Binary } from "@opencode-ai/core/util/binary"
 import { getDirectory, getFilename } from "@opencode-ai/core/util/path"
-import { createEffect, createMemo, createSignal, For, on, ParentProps, Show } from "solid-js"
+import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, ParentProps, Show } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Dynamic } from "solid-js/web"
 import { AssistantParts, Message, MessageDivider, PART_MAPPING, type UserActions } from "./message-part"
@@ -267,6 +267,23 @@ export function SessionTurn(
     autoScroll.pause()
     setState("showAll", !showAll())
   }
+
+  const handleWyzordToggleDetails = (event: Event) => {
+    const detail = event instanceof CustomEvent ? event.detail : undefined
+    if (!detail || typeof detail.open !== "boolean") return
+    if (detail.open) {
+      setState("showAll", true)
+      setState(
+        "expanded",
+        diffs().map((diff) => diff.file),
+      )
+      return
+    }
+    setState("expanded", [])
+  }
+
+  onMount(() => window.addEventListener("wyzord-opencode-toggle-details", handleWyzordToggleDetails))
+  onCleanup(() => window.removeEventListener("wyzord-opencode-toggle-details", handleWyzordToggleDetails))
 
   const assistantMessages = createMemo(
     () => {
