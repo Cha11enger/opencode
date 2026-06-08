@@ -1,5 +1,5 @@
 import { Collapsible as Kobalte, CollapsibleRootProps } from "@kobalte/core/collapsible"
-import { ComponentProps, ParentProps, splitProps } from "solid-js"
+import { ComponentProps, ParentProps, createContext, createMemo, createSignal, splitProps, useContext } from "solid-js"
 import { Icon } from "./icon"
 
 export interface CollapsibleProps extends ParentProps<CollapsibleRootProps> {
@@ -7,6 +7,14 @@ export interface CollapsibleProps extends ParentProps<CollapsibleRootProps> {
   classList?: ComponentProps<"div">["classList"]
   variant?: "normal" | "ghost"
 }
+
+type EmbeddedCollapsibleContextValue = {
+  open: () => boolean
+  disabled: () => boolean
+  toggle: () => void
+}
+
+const EmbeddedCollapsibleContext = createContext<EmbeddedCollapsibleContextValue>()
 
 function isWyzordEmbeddedOpenCode() {
   return (
@@ -16,20 +24,43 @@ function isWyzordEmbeddedOpenCode() {
 }
 
 function CollapsibleRoot(props: CollapsibleProps) {
-  const [local, others] = splitProps(props, ["class", "classList", "variant", "children"])
+  const [local, others] = splitProps(props, [
+    "class",
+    "classList",
+    "variant",
+    "children",
+    "open",
+    "defaultOpen",
+    "onOpenChange",
+    "disabled",
+  ])
   if (isWyzordEmbeddedOpenCode()) {
+    const [internalOpen, setInternalOpen] = createSignal(Boolean(local.defaultOpen))
+    const open = createMemo(() => (typeof local.open === "boolean" ? local.open : internalOpen()))
+    const disabled = createMemo(() => Boolean(local.disabled))
+    const toggle = () => {
+      if (disabled()) return
+      const next = !open()
+      if (typeof local.open !== "boolean") setInternalOpen(next)
+      local.onOpenChange?.(next)
+    }
+
     return (
-      <div
-        data-component="collapsible"
-        data-variant={local.variant || "normal"}
-        data-embedded-open=""
-        classList={{
-          ...local.classList,
-          [local.class ?? ""]: !!local.class,
-        }}
-      >
-        {local.children}
-      </div>
+      <EmbeddedCollapsibleContext.Provider value={{ open, disabled, toggle }}>
+        <div
+          {...(others as ComponentProps<"div">)}
+          data-component="collapsible"
+          data-variant={local.variant || "normal"}
+          data-expanded={open() ? "" : undefined}
+          data-closed={!open() ? "" : undefined}
+          classList={{
+            ...local.classList,
+            [local.class ?? ""]: !!local.class,
+          }}
+        >
+          {local.children}
+        </div>
+      </EmbeddedCollapsibleContext.Provider>
     )
   }
   return (
@@ -47,16 +78,42 @@ function CollapsibleRoot(props: CollapsibleProps) {
 
 function CollapsibleTrigger(props: ComponentProps<typeof Kobalte.Trigger>) {
   if (isWyzordEmbeddedOpenCode()) {
-    const [local, others] = splitProps(props as ComponentProps<"div">, ["children"])
-    return <div data-slot="collapsible-trigger" {...others}>{local.children}</div>
+    const context = useContext(EmbeddedCollapsibleContext)
+    const [local, others] = splitProps(props as ComponentProps<"button">, ["children", "onClick", "disabled"])
+    return (
+      <button
+        {...others}
+        type="button"
+        data-slot="collapsible-trigger"
+        data-expanded={context?.open() ? "" : undefined}
+        aria-expanded={context?.open() ?? false}
+        disabled={local.disabled || context?.disabled()}
+        onClick={(event) => {
+          if (typeof local.onClick === "function") local.onClick(event)
+          if (!event.defaultPrevented) context?.toggle()
+        }}
+      >
+        {local.children}
+      </button>
+    )
   }
   return <Kobalte.Trigger data-slot="collapsible-trigger" {...props} />
 }
 
 function CollapsibleContent(props: ComponentProps<typeof Kobalte.Content>) {
   if (isWyzordEmbeddedOpenCode()) {
+    const context = useContext(EmbeddedCollapsibleContext)
     const [local, others] = splitProps(props as ComponentProps<"div">, ["children"])
-    return <div data-slot="collapsible-content" {...others}>{local.children}</div>
+    return (
+      <div
+        {...others}
+        data-slot="collapsible-content"
+        data-expanded={context?.open() ? "" : undefined}
+        hidden={!context?.open()}
+      >
+        {local.children}
+      </div>
+    )
   }
   return <Kobalte.Content data-slot="collapsible-content" {...props} />
 }
