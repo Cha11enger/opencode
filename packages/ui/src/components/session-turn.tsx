@@ -10,7 +10,7 @@ import { useFileComponent } from "../context/file"
 
 import { Binary } from "@opencode-ai/core/util/binary"
 import { getDirectory, getFilename } from "@opencode-ai/core/util/path"
-import { createEffect, createMemo, createSignal, For, on, onCleanup, onMount, ParentProps, Show } from "solid-js"
+import { createMemo, For, onCleanup, onMount, ParentProps, Show } from "solid-js"
 import { createStore } from "solid-js/store"
 import { Dynamic } from "solid-js/web"
 import { AssistantParts, Message, MessageDivider, PART_MAPPING, type UserActions } from "./message-part"
@@ -268,9 +268,23 @@ export function SessionTurn(
     setState("showAll", !showAll())
   }
 
+  const reviewDiffs = () => {
+    window.dispatchEvent(
+      new CustomEvent("wyzord-opencode-review-files", {
+        detail: { sessionID: props.sessionID, messageID: props.messageID },
+      }),
+    )
+  }
+
+  const undoDiffs = () => {
+    props.actions?.revert?.({ sessionID: props.sessionID, messageID: props.messageID })
+  }
+
   const handleWyzordToggleDetails = (event: Event) => {
     const detail = event instanceof CustomEvent ? event.detail : undefined
     if (!detail || typeof detail.open !== "boolean") return
+    if (detail.sessionID && detail.sessionID !== props.sessionID) return
+    if (detail.messageID && detail.messageID !== props.messageID) return
     if (detail.open) {
       setState("showAll", true)
       setState(
@@ -483,16 +497,27 @@ export function SessionTurn(
                   data-show-all={showAll() || undefined}
                 >
                   <div data-slot="session-turn-diffs-header">
-                    <span data-slot="session-turn-diffs-label">
-                      {edited()} {i18n.t("ui.sessionTurn.diffs.changed")}{" "}
-                      {i18n.t(edited() === 1 ? "ui.common.file.one" : "ui.common.file.other")}
-                    </span>
-                    <DiffChanges changes={diffs()} />
-                    <Show when={overflow() > 0}>
-                      <span data-slot="session-turn-diffs-toggle" onClick={toggleAll}>
-                        {showAll() ? i18n.t("ui.sessionTurn.diffs.showLess") : i18n.t("ui.sessionTurn.diffs.showAll")}
+                    <div data-slot="session-turn-diffs-summary">
+                      <span data-slot="session-turn-diffs-label">
+                        Edited {edited()} {edited() === 1 ? "file" : "files"}
                       </span>
-                    </Show>
+                    </div>
+                    <div data-slot="session-turn-diffs-header-meta">
+                      <DiffChanges changes={diffs()} />
+                      <Show when={props.actions?.revert}>
+                        <button type="button" data-slot="session-turn-diffs-action" onClick={undoDiffs}>
+                          Undo
+                        </button>
+                      </Show>
+                      <button type="button" data-slot="session-turn-diffs-action" onClick={reviewDiffs}>
+                        Review
+                      </button>
+                      <Show when={overflow() > 0}>
+                        <button type="button" data-slot="session-turn-diffs-toggle" onClick={toggleAll}>
+                          {showAll() ? i18n.t("ui.sessionTurn.diffs.showLess") : i18n.t("ui.sessionTurn.diffs.showAll")}
+                        </button>
+                      </Show>
+                    </div>
                   </div>
                   <div data-component="session-turn-diffs-content">
                     <Accordion
@@ -505,31 +530,11 @@ export function SessionTurn(
                         {(diff) => {
                           const view = normalize(diff)
                           const active = createMemo(() => expanded().includes(diff.file))
-                          const [shown, setShown] = createSignal(false)
-
-                          createEffect(
-                            on(
-                              active,
-                              (value) => {
-                                if (!value) {
-                                  setShown(false)
-                                  return
-                                }
-
-                                requestAnimationFrame(() => {
-                                  if (!active()) return
-                                  setShown(true)
-                                })
-                              },
-                              { defer: true },
-                            ),
-                          )
-
                           return (
                             <Accordion.Item value={diff.file}>
                               <StickyAccordionHeader>
-                                <Accordion.Trigger>
-                                  <div data-slot="session-turn-diff-trigger">
+                                <div data-slot="session-turn-diff-row">
+                                  <Accordion.Trigger>
                                     <span data-slot="session-turn-diff-path">
                                       <Show when={diff.file.includes("/")}>
                                         <span data-slot="session-turn-diff-directory">
@@ -538,19 +543,28 @@ export function SessionTurn(
                                       </Show>
                                       <span data-slot="session-turn-diff-filename">{getFilename(diff.file)}</span>
                                     </span>
-                                    <div data-slot="session-turn-diff-meta">
+                                    <span data-slot="session-turn-diff-trigger-meta">
                                       <span data-slot="session-turn-diff-changes">
                                         <DiffChanges changes={diff} />
                                       </span>
                                       <span data-slot="session-turn-diff-chevron">
                                         <Icon name="chevron-down" size="small" />
                                       </span>
-                                    </div>
-                                  </div>
-                                </Accordion.Trigger>
+                                    </span>
+                                  </Accordion.Trigger>
+                                  <button
+                                    type="button"
+                                    data-slot="session-turn-diff-open"
+                                    data-wyzord-open-file={diff.file}
+                                    aria-label={`Open ${diff.file} in editor`}
+                                    title={`Open ${diff.file} in editor`}
+                                  >
+                                    Open
+                                  </button>
+                                </div>
                               </StickyAccordionHeader>
                               <Accordion.Content>
-                                <Show when={shown()}>
+                                <Show when={active()}>
                                   <div data-slot="session-turn-diff-view" data-scrollable>
                                     <Dynamic component={fileComponent} mode="diff" fileDiff={view.fileDiff} />
                                   </div>

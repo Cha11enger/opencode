@@ -89,11 +89,14 @@ function AccordionRoot(props: AccordionProps) {
 function AccordionItem(props: AccordionItemProps) {
   const [split, rest] = splitProps(props, ["class", "classList", "children", "value"])
   if (isWyzordEmbeddedOpenCode()) {
+    const context = useContext(EmbeddedAccordionContext)
+    const open = createMemo(() => context?.expanded(split.value) ?? false)
     return (
       <EmbeddedAccordionItemContext.Provider value={split.value}>
         <div
           {...(rest as ComponentProps<"div">)}
           data-slot="accordion-item"
+          data-expanded={open() ? "" : undefined}
           classList={{
             ...split.classList,
             [split.class ?? ""]: !!split.class,

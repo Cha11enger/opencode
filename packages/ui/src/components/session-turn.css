@@ -200,6 +200,23 @@
     gap: 10px;
   }
 
+  [data-slot="session-turn-diff-open"] {
+    height: 24px;
+    padding: 0 8px;
+    border-radius: 6px;
+    color: var(--text-weak);
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  [data-slot="session-turn-diff-open"]:hover,
+  [data-slot="session-turn-diff-open"]:focus-visible {
+    color: var(--text-strong);
+    background-color: var(--surface-raised-base);
+    outline: none;
+  }
+
   [data-slot="session-turn-diff-chevron"] {
     display: inline-flex;
     color: var(--icon-weaker);
@@ -226,6 +243,94 @@
   }
 }
 
-[data-slot="session-turn-list"] {
-  gap: 24px;
-}
+  [data-slot="session-turn-list"] {
+    gap: 24px;
+  }
+
+  [data-slot="session-turn-diffs"] {
+    overflow: hidden;
+    border: 1px solid var(--border-weak-base);
+    border-radius: 8px;
+    background-color: var(--surface-base);
+  }
+
+  [data-slot="session-turn-diffs-header"] {
+    justify-content: space-between;
+    min-height: 44px;
+    padding: 10px 12px;
+    border-bottom: 1px solid var(--border-weak-base);
+    background-color: var(--surface-base);
+  }
+
+  [data-slot="session-turn-diffs-summary"],
+  [data-slot="session-turn-diffs-header-meta"] {
+    display: flex;
+    align-items: center;
+    min-width: 0;
+  }
+
+  [data-slot="session-turn-diffs-summary"] {
+    gap: 8px;
+  }
+
+  [data-slot="session-turn-diffs-header-meta"] {
+    flex-shrink: 0;
+    gap: 10px;
+  }
+
+  [data-slot="session-turn-diffs-count"] {
+    color: var(--text-weak);
+    font-size: 12px;
+    line-height: 18px;
+  }
+
+  [data-slot="session-turn-diffs-toggle"] {
+    appearance: none;
+    border: 0;
+    background: transparent;
+  }
+
+  [data-slot="session-turn-diffs-action"] {
+    height: 26px;
+    padding: 0 10px;
+    border: 1px solid var(--border-weak-base);
+    border-radius: 6px;
+    background: transparent;
+    color: var(--text-weak);
+    font-size: 12px;
+    line-height: 1;
+    cursor: pointer;
+  }
+
+  [data-slot="session-turn-diffs-action"]:hover,
+  [data-slot="session-turn-diffs-action"]:focus-visible {
+    color: var(--text-strong);
+    background-color: var(--surface-raised-base);
+    outline: none;
+  }
+
+  [data-slot="session-turn-diff-row"] {
+    display: flex;
+    align-items: center;
+    width: 100%;
+    min-width: 0;
+    border-bottom: 1px solid var(--border-weak-base);
+  }
+
+  [data-slot="session-turn-diff-trigger"] {
+    flex: 1;
+    padding: 9px 8px 9px 12px;
+    text-align: left;
+  }
+
+  [data-slot="session-turn-diff-trigger-meta"] {
+    display: flex;
+    align-items: center;
+    flex-shrink: 0;
+    gap: 8px;
+  }
+
+  [data-slot="session-turn-diff-open"] {
+    flex-shrink: 0;
+    margin-right: 8px;
+  }
